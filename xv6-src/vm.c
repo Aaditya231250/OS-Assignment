@@ -267,12 +267,16 @@ deallocuvm(pde_t *pgdir, uint oldsz, uint newsz)
     if(!pte)
       a = PGADDR(PDX(a) + 1, 0, 0) - PGSIZE;
     else if((*pte & PTE_P) != 0){
-      pa = PTE_ADDR(*pte);
-      if(pa == 0)
-        panic("kfree");
-      char *v = P2V(pa);
-      kfree(v);
+
+      if((*pte & PTE_S) == 0){
+        pa = PTE_ADDR(*pte);
+        if(pa == 0)
+          panic("kfree");
+        char *v = P2V(pa);
+        kfree(v);
+      }
       *pte = 0;
+
     }
   }
   return newsz;
@@ -322,19 +326,30 @@ copyuvm(pde_t *pgdir, uint sz)
 
   if((d = setupkvm()) == 0)
     return 0;
+
   for(i = 0; i < sz; i += PGSIZE){
     if((pte = walkpgdir(pgdir, (void *) i, 0)) == 0)
       panic("copyuvm: pte should exist");
     if(!(*pte & PTE_P))
       panic("copyuvm: page not present");
+
     pa = PTE_ADDR(*pte);
     flags = PTE_FLAGS(*pte);
-    if((mem = kalloc()) == 0)
-      goto bad;
-    memmove(mem, (char*)P2V(pa), PGSIZE);
-    if(mappages(d, (void*)i, PGSIZE, V2P(mem), flags) < 0) {
-      kfree(mem);
-      goto bad;
+
+
+    if(flags & PTE_S){
+      if(mappages(d, (void*)i, PGSIZE, pa, flags) < 0) {
+        goto bad;
+      }
+    } else {
+
+      if((mem = kalloc()) == 0)
+        goto bad;
+      memmove(mem, (char*)P2V(pa), PGSIZE);
+      if(mappages(d, (void*)i, PGSIZE, V2P(mem), flags) < 0) {
+        kfree(mem);
+        goto bad;
+      }
     }
   }
   return d;
@@ -466,6 +481,103 @@ handle_page_fault(void)
     kfree(mem); 
     return -1; 
   }
+
+  lcr3(V2P(curproc->pgdir));
+
+  return 0; 
+}
+
+int
+mappageshared(void)
+{
+  struct proc *curproc = myproc();
+  uint va = curproc->sz; 
+  char *mem;
+
+  mem = kalloc();
+  if(mem == 0){
+    cprintf("mappageshared: out of memory\n");
+    return 0; 
+  }
+
+  memset(mem, 0, PGSIZE);
+
+  if(mappages(curproc->pgdir, (void*)va, PGSIZE, V2P(mem), PTE_W | PTE_U | PTE_S) < 0){
+    cprintf("mappageshared: mappages failed\n");
+    kfree(mem); 
+    return 0; 
+  }
+
+  curproc->sz += PGSIZE;
+
+  lcr3(V2P(curproc->pgdir));
+
+  return va;
+}
+
+int
+findsharedva(void)
+{
+  struct proc *curproc = myproc();
+  pde_t *pgdir = curproc->pgdir;
+  uint va = 0; 
+
+  for(int i = 0; i < PDX(KERNBASE); i++){
+    pde_t pde = pgdir[i];
+
+    if(pde & PTE_P){
+      pte_t *pgtab = (pte_t*)P2V(PTE_ADDR(pde));
+
+      for(int j = 0; j < NPTENTRIES; j++){
+        pte_t pte = pgtab[j];
+
+        if((pte & (PTE_P | PTE_U | PTE_S)) == (PTE_P | PTE_U | PTE_S)){
+          va = PGADDR(i, j, 0);
+          return va; 
+        }
+      }
+    }
+  }
+  return 0; // Not found, return 0
+}
+
+// Find, unmap, and free the shared page.
+int
+unmapsharedpage(void)
+{
+  struct proc *curproc = myproc();
+  pde_t *pgdir = curproc->pgdir;
+  pte_t *pte;
+  uint pa;
+  uint va = 0;
+
+  // First, find the virtual address of the shared page
+  // (This logic is identical to findsharedva)
+  for(int i = 0; i < PDX(KERNBASE); i++){
+    pde_t pde = pgdir[i];
+    if(pde & PTE_P){
+      pte_t *pgtab = (pte_t*)P2V(PTE_ADDR(pde));
+      for(int j = 0; j < NPTENTRIES; j++){
+        if((pgtab[j] & (PTE_P | PTE_U | PTE_S)) == (PTE_P | PTE_U | PTE_S)){
+          va = PGADDR(i, j, 0);
+          pte = &pgtab[j];
+          goto found;
+        }
+      }
+    }
+  }
+
+found:
+  if(va == 0)
+    return -1; 
+
+  pa = PTE_ADDR(*pte);
+
+  kfree(P2V(pa));
+
+  *pte = 0;
+
+  curproc->sz -= PGSIZE;
 
   lcr3(V2P(curproc->pgdir));
 

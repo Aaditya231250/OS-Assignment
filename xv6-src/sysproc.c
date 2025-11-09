@@ -90,27 +90,6 @@ sys_uptime(void)
   return xticks;
 }
 
-// Part B
-
-// Part C
-int
-sys_mapshared(void)
-{
-  return 0; // Placeholder
-}
-
-int
-sys_getshared(void)
-{
-  return 0; // Placeholder
-}
-
-int
-sys_unmapshared(void)
-{
-  return 0; // Placeholder
-}
-
 // Part D
 int
 sys_getNumFreePages(void)
@@ -158,3 +137,22 @@ sys_mmap(void)
   return oldsz;
 }
 
+// Part C
+
+int
+sys_mapshared(void)
+{
+  return mappageshared();
+}
+
+int
+sys_getshared(void)
+{
+  return findsharedva(); 
+}
+
+int
+sys_unmapshared(void)
+{
+  return unmapsharedpage();
+}
