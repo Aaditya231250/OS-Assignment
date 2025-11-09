@@ -385,6 +385,59 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
   return 0;
 }
 
+int
+count_virtual_pages(void)
+{
+  struct proc *curproc = myproc();
+  uint sz = curproc->sz;
+
+  // PGROUNDUP rounds sz up to the nearest page size.
+  // Then we divide by PGSIZE to get the number of pages.
+  return PGROUNDUP(sz) / PGSIZE;
+}
+
+int
+count_physical_pages(void)
+{
+  struct proc *curproc = myproc();
+  pde_t *pgdir = curproc->pgdir;
+  int count = 0;
+  for(int i = 0; i < PDX(KERNBASE); i++){
+    pde_t pde = pgdir[i];
+
+    if(pde & PTE_P){
+      pte_t *pgtab = (pte_t*)P2V(PTE_ADDR(pde));
+      
+      for(int j = 0; j < NPTENTRIES; j++){
+        pte_t pte = pgtab[j];
+        
+        if((pte & PTE_P) && (pte & PTE_U)){
+          count++;
+        }
+      }
+    }
+  }
+  return count;
+}
+
+int
+count_page_table_pages(void)
+{
+  struct proc *curproc = myproc();
+  pde_t *pgdir = curproc->pgdir;
+
+  int count = 1; 
+
+  for(int i = 0; i < PDX(KERNBASE); i++){
+    pde_t pde = pgdir[i];
+
+    if(pde & PTE_P){
+      count++;
+    }
+  }
+  return count;
+}
+
 //PAGEBREAK!
 // Blank page.
 //PAGEBREAK!

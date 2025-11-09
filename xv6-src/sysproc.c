@@ -90,25 +90,6 @@ sys_uptime(void)
   return xticks;
 }
 
-// Part A
-int
-sys_numvp(void)
-{
-  return 0; // Placeholder
-}
-
-int
-sys_numpp(void)
-{
-  return 0; // Placeholder
-}
-
-int
-sys_getptsize(void)
-{
-  return 0; // Placeholder
-}
-
 // Part B
 int
 sys_mmap(void)
@@ -141,3 +122,23 @@ sys_getNumFreePages(void)
 {
   return 0; // Placeholder
 }
+
+// Part A
+int
+sys_numvp(void)
+{
+  return count_virtual_pages();
+}
+
+int
+sys_numpp(void)
+{
+  return count_physical_pages(); 
+}
+
+int
+sys_getptsize(void)
+{
+  return count_page_table_pages(); 
+}
+
