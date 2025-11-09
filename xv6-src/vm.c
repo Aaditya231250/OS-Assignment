@@ -322,7 +322,6 @@ copyuvm(pde_t *pgdir, uint sz)
   pde_t *d;
   pte_t *pte;
   uint pa, i, flags;
-  char *mem;
 
   if((d = setupkvm()) == 0)
     return 0;
@@ -330,35 +329,35 @@ copyuvm(pde_t *pgdir, uint sz)
   for(i = 0; i < sz; i += PGSIZE){
     if((pte = walkpgdir(pgdir, (void *) i, 0)) == 0)
       panic("copyuvm: pte should exist");
-    if(!(*pte & PTE_P))
-      panic("copyuvm: page not present");
+
+    if(!(*pte & PTE_P)){
+      continue; 
+    }
 
     pa = PTE_ADDR(*pte);
     flags = PTE_FLAGS(*pte);
 
-
     if(flags & PTE_S){
-      if(mappages(d, (void*)i, PGSIZE, pa, flags) < 0) {
+      if(mappages(d, (void*)i, PGSIZE, pa, flags) < 0)
         goto bad;
-      }
     } else {
+      flags &= ~PTE_W;
 
-      if((mem = kalloc()) == 0)
+      if(mappages(d, (void*)i, PGSIZE, pa, flags) < 0)
         goto bad;
-      memmove(mem, (char*)P2V(pa), PGSIZE);
-      if(mappages(d, (void*)i, PGSIZE, V2P(mem), flags) < 0) {
-        kfree(mem);
-        goto bad;
-      }
+
+      *pte &= ~PTE_W;
+
+      inc_ref(P2V(pa));
     }
   }
+
   return d;
 
 bad:
   freevm(d);
   return 0;
 }
-
 //PAGEBREAK!
 // Map user virtual address to kernel address.
 char*
@@ -580,6 +579,64 @@ found:
   curproc->sz -= PGSIZE;
 
   lcr3(V2P(curproc->pgdir));
+
+  return 0; 
+}
+
+// Handle a Copy-on-Write (CoW) page fault
+int
+handle_cow_fault(void)
+{
+  struct proc *curproc = myproc();
+  pde_t *pgdir = curproc->pgdir;
+  uint va;
+  pte_t *pte;
+  uint pa;
+  uint flags;
+  char *mem;
+  int ref_count;
+
+  va = rcr2();
+
+  if(va >= KERNBASE || va >= curproc->sz){
+    return -1; 
+  }
+
+  va = PGROUNDDOWN(va);
+
+  pte = walkpgdir(pgdir, (void*)va, 0);
+  if(pte == 0)
+    return -1; 
+
+  if(!(*pte & PTE_P))
+    return -1; 
+
+  pa = PTE_ADDR(*pte);
+  flags = PTE_FLAGS(*pte);
+
+  ref_count = get_ref(P2V(pa));
+
+  if(ref_count > 1){
+    mem = kalloc();
+    if(mem == 0){
+      cprintf("handle_cow_fault: out of memory\n");
+      return -1;
+    }
+
+    memmove(mem, (char*)P2V(pa), PGSIZE);
+
+    dec_ref(P2V(pa));
+
+    *pte = V2P(mem) | ( (flags | PTE_W) & ~PTE_S );
+
+  } else if(ref_count == 1) {
+    *pte |= PTE_W;
+
+  } else {
+    panic("handle_cow_fault: ref count <= 0");
+  }
+
+  lcr3(V2P(pgdir));
 
   return 0; 
 }

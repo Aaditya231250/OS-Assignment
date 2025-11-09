@@ -90,13 +90,6 @@ sys_uptime(void)
   return xticks;
 }
 
-// Part D
-int
-sys_getNumFreePages(void)
-{
-  return 0; // Placeholder
-}
-
 // Part A
 int
 sys_numvp(void)
@@ -155,4 +148,12 @@ int
 sys_unmapshared(void)
 {
   return unmapsharedpage();
+}
+
+// Part D
+
+int
+sys_getNumFreePages(void)
+{
+  return getNumFreePages();
 }

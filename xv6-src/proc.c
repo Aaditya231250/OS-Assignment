@@ -196,6 +196,7 @@ fork(void)
     np->state = UNUSED;
     return -1;
   }
+  lcr3(V2P(curproc->pgdir));
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;

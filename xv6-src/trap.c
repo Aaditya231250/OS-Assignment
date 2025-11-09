@@ -77,11 +77,20 @@ trap(struct trapframe *tf)
             cpuid(), tf->cs, tf->eip);
     lapiceoi();
     break;
-  case T_PGFLT: 
-    if(handle_page_fault() < 0){
-      cprintf("pid %d %s: page fault at 0x%x -- killing proc\n",
-              myproc()->pid, myproc()->name, rcr2());
-      myproc()->killed = 1;
+  case T_PGFLT: // Page Fault
+    if(tf->err & 0x1){
+      if(handle_cow_fault() < 0){
+        cprintf("pid %d %s: CoW page fault at 0x%x -- killing proc\n",
+                myproc()->pid, myproc()->name, rcr2());
+        myproc()->killed = 1;
+      }
+    } else {
+
+      if(handle_page_fault() < 0){
+        cprintf("pid %d %s: mmap page fault at 0x%x -- killing proc\n",
+                myproc()->pid, myproc()->name, rcr2());
+        myproc()->killed = 1;
+      }
     }
     break;
 

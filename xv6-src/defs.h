@@ -68,6 +68,10 @@ char*           kalloc(void);
 void            kfree(char*);
 void            kinit1(void*, void*);
 void            kinit2(void*, void*);
+int             getNumFreePages(void);
+void            inc_ref(char *pa);  
+void            dec_ref(char *pa);   
+int             get_ref(char *pa);
 
 // kbd.c
 void            kbdintr(void);
@@ -192,6 +196,8 @@ int             handle_page_fault(void);
 int             mappageshared(void);
 int             findsharedva(void);
 int             unmapsharedpage(void);
+int             handle_cow_fault(void);
+
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

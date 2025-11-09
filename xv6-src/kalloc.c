@@ -21,7 +21,12 @@ struct {
   struct spinlock lock;
   int use_lock;
   struct run *freelist;
+  uint numfree; // Our new free page counter
 } kmem;
+
+static uint pa_to_index(char *pa); // <-- ADD THIS LINE
+static uint pg_ref_count[(PHYSTOP / PGSIZE)];
+static struct spinlock ref_lock;
 
 // Initialization happens in two phases.
 // 1. main() calls kinit1() while still using entrypgdir to place just
@@ -32,7 +37,9 @@ void
 kinit1(void *vstart, void *vend)
 {
   initlock(&kmem.lock, "kmem");
+  initlock(&ref_lock, "ref_lock");
   kmem.use_lock = 0;
+  kmem.numfree = 0; 
   freerange(vstart, vend);
 }
 
@@ -64,18 +71,33 @@ kfree(char *v)
   if((uint)v % PGSIZE || v < end || V2P(v) >= PHYSTOP)
     panic("kfree");
 
-  // Fill with junk to catch dangling refs.
+  if(kmem.use_lock) {
+    int count = get_ref(v);
+
+    if(count <= 0)
+      panic("kfree: ref count 0 or less");
+
+    dec_ref(v);
+
+    if(count > 1) {
+      return;
+    }
+  }
+
   memset(v, 1, PGSIZE);
 
   if(kmem.use_lock)
     acquire(&kmem.lock);
+
+  kmem.numfree++;
+
   r = (struct run*)v;
   r->next = kmem.freelist;
   kmem.freelist = r;
+
   if(kmem.use_lock)
     release(&kmem.lock);
 }
-
 // Allocate one 4096-byte page of physical memory.
 // Returns a pointer that the kernel can use.
 // Returns 0 if the memory cannot be allocated.
@@ -86,11 +108,66 @@ kalloc(void)
 
   if(kmem.use_lock)
     acquire(&kmem.lock);
+
   r = kmem.freelist;
-  if(r)
+  if(r){
     kmem.freelist = r->next;
+    kmem.numfree--;
+  }
+
   if(kmem.use_lock)
     release(&kmem.lock);
+
+  if(r && kmem.use_lock){
+    acquire(&ref_lock);
+    pg_ref_count[pa_to_index((char*)r)] = 1;
+    release(&ref_lock);
+  }
+
   return (char*)r;
 }
+int
+getNumFreePages(void)
+{
+  int n;
+  acquire(&kmem.lock);
+  n = kmem.numfree;
+  release(&kmem.lock);
+  return n;
+}
 
+// Get the page number from a physical address
+static uint
+pa_to_index(char *pa)
+{
+  return (V2P(pa) / PGSIZE);
+}
+
+// Increment the reference count for a page
+void
+inc_ref(char *pa)
+{
+  acquire(&ref_lock);
+  pg_ref_count[pa_to_index(pa)]++;
+  release(&ref_lock);
+}
+
+// Decrement the reference count for a page
+void
+dec_ref(char *pa)
+{
+  acquire(&ref_lock);
+  pg_ref_count[pa_to_index(pa)]--;
+  release(&ref_lock);
+}
+
+// Get the reference count for a page
+int
+get_ref(char *pa)
+{
+  int count;
+  acquire(&ref_lock);
+  count = pg_ref_count[pa_to_index(pa)];
+  release(&ref_lock);
+  return count;
+}
