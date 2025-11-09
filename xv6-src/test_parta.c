@@ -44,7 +44,8 @@ int main(int argc, char *argv[]) {
     
     printf(1, "\n=== Verification ===\n");
     printf(1, "Virtual pages should equal physical pages (no demand paging yet): ");
-    if (vp == pp) {
+    if (vp == pp
+    ) {
         printf(1, "PASS\n");
     } else {
         printf(1, "FAIL (vp=%d, pp=%d)\n", vp, pp);
