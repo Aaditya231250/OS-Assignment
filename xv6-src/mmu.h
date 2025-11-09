@@ -94,11 +94,14 @@ struct segdesc {
 #define PTE_P           0x001   // Present
 #define PTE_W           0x002   // Writeable
 #define PTE_U           0x004   // User
+#define PTE_S           0x008
 #define PTE_PS          0x080   // Page Size
 
 // Address in page table or page directory entry
 #define PTE_ADDR(pte)   ((uint)(pte) & ~0xFFF)
 #define PTE_FLAGS(pte)  ((uint)(pte) &  0xFFF)
+
+
 
 #ifndef __ASSEMBLER__
 typedef uint pte_t;
