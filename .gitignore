@@ -1,0 +1,42 @@
+# xv6 build artifacts
+*.o
+*.d
+*.asm
+*.sym
+*~
+.gdbinit
+*.img
+*.out
+kernel
+xv6.img
+fs.img
+bootblock
+entryother
+initcode
+initcode.out
+mkfs
+vectors.S
+_*
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Compiled files
+*.o
+*.a
+*.so
+*.exe
+
+# Docker volumes
+.docker-data/
+
+# Logs
+*.log
+
+# OS files
+Thumbs.db

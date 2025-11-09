@@ -1,0 +1,15 @@
+services:
+  xv6-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: xv6-memory-mgmt
+    platform: linux/amd64
+    volumes:
+      - ./xv6-src:/xv6
+      - ./tests:/xv6/tests
+      - ./docs:/xv6/docs
+    working_dir: /xv6
+    stdin_open: true
+    tty: true
+    command: /bin/bash

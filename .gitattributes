@@ -1,0 +1,24 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Source code
+*.c text
+*.h text
+*.S text
+*.asm text
+
+# Scripts
+*.sh text eol=lf
+
+# Documentation
+*.md text
+*.txt text
+*.pdf binary
+
+# Docker
+Dockerfile text
+docker-compose.yml text
+
+# Makefiles
+Makefile text
+*.mk text

@@ -1,0 +1,35 @@
+# Optional GitHub Actions CI Workflow
+# This workflow automatically builds and tests your xv6 code when you push
+
+name: xv6 Build and Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Build Docker image
+      run: docker-compose build
+    
+    - name: Verify Docker image
+      run: docker-compose run --rm xv6-dev bash -c "echo 'Container built successfully'"
+    
+    # Uncomment below when xv6 source is added to repository
+    # - name: Build xv6
+    #   run: docker-compose run --rm xv6-dev bash -c "cd /xv6 && make"
+    
+    # - name: Run Part A tests
+    #   run: docker-compose run --rm xv6-dev bash -c "cd /xv6 && timeout 30 make qemu-nox < test_parta_input.txt"
+    
+    # Note: Automated testing of xv6 in CI is challenging due to QEMU interaction
+    # The above examples are starting points - you'll need to create test scripts
+    # that can run non-interactively
