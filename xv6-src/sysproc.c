@@ -91,11 +91,6 @@ sys_uptime(void)
 }
 
 // Part B
-int
-sys_mmap(void)
-{
-  return 0; // Placeholder
-}
 
 // Part C
 int
@@ -140,5 +135,26 @@ int
 sys_getptsize(void)
 {
   return count_page_table_pages(); 
+}
+
+// Part B
+int
+sys_mmap(void)
+{
+  int n;
+  struct proc *curproc = myproc();
+  uint oldsz;
+
+  if(argint(0, &n) < 0)
+    return 0; 
+
+  if(n <= 0 || (n % PGSIZE) != 0)
+    return 0; 
+
+  oldsz = curproc->sz;
+
+  curproc->sz = oldsz + n;
+  
+  return oldsz;
 }
 

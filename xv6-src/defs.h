@@ -188,6 +188,7 @@ void            clearpteu(pde_t *pgdir, char *uva);
 int             count_virtual_pages(void); 
 int             count_physical_pages(void);
 int             count_page_table_pages(void);
+int             handle_page_fault(void);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

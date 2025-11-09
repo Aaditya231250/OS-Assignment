@@ -438,6 +438,40 @@ count_page_table_pages(void)
   return count;
 }
 
+int
+handle_page_fault(void)
+{
+  struct proc *curproc = myproc();
+  uint va;
+  char *mem;
+
+  va = rcr2();
+
+  if(va >= curproc->sz || va >= KERNBASE){
+    return -1; 
+  }
+
+  va = PGROUNDDOWN(va);
+
+  mem = kalloc();
+  if(mem == 0){
+    cprintf("handle_page_fault: out of memory\n");
+    return -1; 
+  }
+
+  memset(mem, 0, PGSIZE);
+
+  if(mappages(curproc->pgdir, (void*)va, PGSIZE, V2P(mem), PTE_W | PTE_U) < 0){
+    cprintf("handle_page_fault: mappages failed\n");
+    kfree(mem); 
+    return -1; 
+  }
+
+  lcr3(V2P(curproc->pgdir));
+
+  return 0; 
+}
+
 //PAGEBREAK!
 // Blank page.
 //PAGEBREAK!
