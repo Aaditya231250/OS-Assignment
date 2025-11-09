@@ -185,6 +185,7 @@ UPROGS=\
 	_test_mmap\
 	_test-shared1\
 	_test-shared2\
+	_test-shared3\
 	_test_cow\
 
 
